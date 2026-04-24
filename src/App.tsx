@@ -92,9 +92,9 @@ export default function App() {
     const totalCostes = accumulatedInterest + openingCommissionValue + feesValue;
     const totalADevolver = capital + totalCostes;
 
-    const taeAproximada = (totalCostes / capital) * (12 / termMonths) * 100;
-    const cargaFinanciera = (totalCostes / capital) * 100;
-    const costeMensualPromedio = totalCostes / termMonths;
+    const taeAproximada = capital > 0 && termMonths > 0 ? (totalCostes / capital) * (12 / termMonths) * 100 : 0;
+    const cargaFinanciera = capital > 0 ? (totalCostes / capital) * 100 : 0;
+    const costeMensualPromedio = termMonths > 0 ? totalCostes / termMonths : 0;
 
     return {
       timeline: newTimeline,
@@ -142,6 +142,7 @@ export default function App() {
           <ControlGroup 
             label="Capital del Préstamo" 
             value={capital} 
+            min={50000}
             max={10000000} 
             step={50000} 
             formatter={formatEUR}
@@ -153,6 +154,7 @@ export default function App() {
           <ControlGroup 
             label="Plazo (Meses)" 
             value={termMonths} 
+            min={1}
             max={56} 
             step={1} 
             formatter={(v) => `${v} meses`}
@@ -199,7 +201,8 @@ export default function App() {
             <ControlGroup 
               label="Número de Certificaciones" 
               value={certifications} 
-              max={Math.min(termMonths, 24)} 
+              min={1}
+              max={Math.max(1, Math.min(termMonths, 24))} 
               step={1} 
               formatter={(v) => v.toString()}
               onChange={setCertifications} 
@@ -578,9 +581,9 @@ function KPICard({
 
 // Reusable Custom Slider Component
 function ControlGroup({ 
-  label, value, max, step, formatter, onChange, icon 
+  label, value, max, step, formatter, onChange, icon, min = 0 
 }: { 
-  label: string, value: number, max: number, step: number, formatter: (val: number) => string, onChange: (val: number) => void, icon?: React.ReactNode 
+  label: string, value: number, max: number, step: number, formatter: (val: number) => string, onChange: (val: number) => void, icon?: React.ReactNode, min?: number
 }) {
   return (
     <div>
@@ -602,7 +605,7 @@ function ControlGroup({
       </div>
       <input 
         type="range" 
-        min={0} 
+        min={min} 
         max={max} 
         step={step} 
         value={value} 
