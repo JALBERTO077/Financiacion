@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentación Financiera - La Selva Nº13</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+    <div id="app" v-cloak class="flex h-screen w-full overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-[360px] flex-shrink-0 bg-slate-900 text-slate-100 flex flex-col h-full shadow-2xl relative z-20 overflow-y-auto overflow-x-hidden">
+            <div class="p-6 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10 w-full">
+                <div class="flex items-center gap-2 text-emerald-400 mb-2">
+                    <h2 class="text-xl font-bold tracking-tight">Parámetros</h2>
+                </div>
+                <p class="text-xs text-slate-400">Ajuste los valores del escenario</p>
+            </div>
+
+            <div class="p-6 space-y-8 flex-1 w-full">
+                <!-- Capital Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">Capital del Préstamo</label>
+                        <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ formatEUR(capital) }}</span>
+                    </div>
+                    <input type="range" min="0" max="10000000" step="50000" v-model.number="capital" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
+
+                <!-- Plazo Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">Plazo (Meses)</label>
+                        <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ termMonths }} meses</span>
+                    </div>
+                    <input type="range" min="1" max="56" step="1" v-model.number="termMonths" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
+
+                <!-- Interés Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">Tipo de Interés (Anual)</label>
+                        <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ interestRate.toFixed(2) }} %</span>
+                    </div>
+                    <input type="range" min="0" max="25" step="0.05" v-model.number="interestRate" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
+
+                <!-- Comisión Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">Comisión de Apertura</label>
+                        <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ openingCommPct.toFixed(2) }} %</span>
+                    </div>
+                    <input type="range" min="0" max="10" step="0.25" v-model.number="openingCommPct" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
+
+                <!-- Honorarios Slider -->
+                <div>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <label class="text-sm font-medium text-slate-300 flex items-center gap-2">Honorarios</label>
+                        <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ feesPct.toFixed(2) }} %</span>
+                    </div>
+                    <input type="range" min="0" max="10" step="0.25" v-model.number="feesPct" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                </div>
+
+                <div class="border-t border-slate-800 pt-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Desembolsos (Certificaciones)</h3>
+                    
+                    <div>
+                        <div class="flex items-center justify-between mb-2.5">
+                            <label class="text-sm font-medium text-slate-300">Nº de Certificaciones</label>
+                            <span class="text-emerald-400 font-mono font-bold text-sm bg-emerald-400/10 px-2 py-0.5 rounded">{{ Math.min(certifications, termMonths) }}</span>
+                        </div>
+                        <input type="range" min="1" :max="Math.min(termMonths, 24)" step="1" v-model.number="certifications" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+
+                    <div class="mt-8">
+                        <label class="flex items-center justify-between text-sm font-medium text-slate-200 mb-2">
+                            <span>Primera Certificación</span>
+                            <span class="text-emerald-400 font-mono">{{ formatEUR(firstCert) }}</span>
+                        </label>
+                        <input type="range" min="0" :max="capital" step="10000" v-model.number="firstCert" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        <div class="flex justify-between text-xs text-slate-500 mt-2">
+                            <span>Restantes: {{ Math.max(0, certifications - 1) }}</span>
+                            <span>Aprox/Mes: {{ formatEUR(certifications > 1 ? (Math.max(0, capital - firstCert)) / (certifications - 1) : 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col items-center">
+            <div class="w-full max-w-6xl mx-auto px-8 py-8 flex flex-col gap-6">
+                <!-- Header -->
+                <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 text-white p-6 border-b-4 border-emerald-500 rounded-lg shadow-md w-full">
+                    <div>
+                        <span class="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-1 block">Propuesta de Financiación Inmobiliaria</span>
+                        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mt-1">PROYECTO LA SELVA Nº13</h1>
+                        <p class="text-slate-400 text-sm mt-2">
+                            Solicitante: <span class="text-white font-medium uppercase">KRONUNG OVERSEAS SL</span>
+                        </p>
+                    </div>
+                    <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8 mt-4 md:mt-0">
+                        <div class="text-xl font-bold italic text-slate-100">Soluciones Financieras Siglo XXI</div>
+                        <div class="text-emerald-400 text-sm mt-1">Ángel Crespo García</div>
+                    </div>
+                </header>
+
+                <!-- Top KPIs Summaries -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- KPI 1 -->
+                    <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col group relative overflow-hidden">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs uppercase text-slate-500 font-bold tracking-wide">Capital Concedido</div>
+                        </div>
+                        <div class="text-3xl font-black mt-2 text-slate-800">{{ formatEUR(capital) }}</div>
+                        <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wide">Interés no dispuesto: 0.00%</div>
+                    </div>
+                    <!-- KPI 2 -->
+                    <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col group relative overflow-hidden">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs uppercase text-slate-500 font-bold tracking-wide">Coste Intereses</div>
+                        </div>
+                        <div class="text-3xl font-black mt-2 text-slate-800">{{ formatEUR(summaries.totalInterest) }}</div>
+                        <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wide">Tipo de interés: {{ interestRate.toFixed(2) }}%</div>
+                    </div>
+                    <!-- KPI 3 -->
+                    <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col group relative overflow-hidden">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs uppercase text-slate-500 font-bold tracking-wide">Comisiones y Honor.</div>
+                        </div>
+                        <div class="text-3xl font-black mt-2 text-slate-800">{{ formatEUR(summaries.openingCommission + summaries.fees) }}</div>
+                        <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wide">Apertura: {{ openingCommPct }}% | Honor: {{ feesPct }}%</div>
+                    </div>
+                    <!-- KPI 4 -->
+                    <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="text-xs uppercase text-slate-500 font-bold tracking-wide">Total a Devolver</div>
+                        </div>
+                        <div class="text-3xl font-black mt-2 text-emerald-600">{{ formatEUR(summaries.totalADevolver) }}</div>
+                        <div class="text-[10px] text-slate-400 mt-2 uppercase tracking-wide">Pago a Bullet (Mes {{ termMonths }})</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+                    
+                    <!-- Area Chart -->
+                    <div class="col-span-1 lg:col-span-7 bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col h-[420px]">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 class="text-xs uppercase text-slate-500 font-bold tracking-wider">Evolución del Desembolso e Intereses</h3>
+                                <p class="text-[10px] text-slate-400 mt-1 uppercase">Acumulación a lo largo de los {{ termMonths }} meses</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-h-0 relative">
+                            <canvas id="areaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart -->
+                    <div class="col-span-1 lg:col-span-5 bg-white rounded-lg shadow-sm border border-slate-200 p-6 flex flex-col h-[420px]">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs uppercase text-slate-500 font-bold tracking-wider">Desglose de Pago</h3>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mb-6 uppercase">Proporción de capital y gastos</p>
+                        
+                        <div class="flex-1 w-full relative -mt-4">
+                            <canvas id="pieChart"></canvas>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-4">
+                                <span class="text-slate-400 text-xs font-semibold uppercase tracking-widest text-center mt-2">Carga<br/>Financ.</span>
+                                <span class="text-2xl font-bold text-slate-800">{{ ((summaries.totalCostes / capital) * 100).toFixed(1) }}%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3 mt-4">
+                            <div v-for="item in pieData" class="flex items-center justify-between text-sm">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                                    <span class="text-slate-600 font-medium">{{ item.name }}</span>
+                                </div>
+                                <span class="text-slate-900 font-bold">{{ ((item.value / summaries.totalADevolver)*100).toFixed(1) }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden w-full flex flex-col">
+                    <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Calendario de Desembolsos ({{ Math.min(certifications, termMonths) }} Certificaciones)</span>
+                        <span class="text-xs text-slate-500 italic">Previsión Acumulada</span>
+                    </div>
+                    <div class="overflow-x-auto p-0">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50/50 border-b border-slate-100 text-slate-600">
+                                <tr>
+                                    <th class="py-3 px-4">Periodo</th>
+                                    <th class="py-3 px-4">Desembolso en el Mes</th>
+                                    <th class="py-3 px-4">Capital Dispuesto Total</th>
+                                    <th class="py-3 px-4 text-right">Interés Generado</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="item in timeline.slice(0, Math.max(certifications, 3))" :key="item.month" class="hover:bg-slate-50/50 transition-colors">
+                                    <td class="py-3 px-4 font-medium text-slate-800">
+                                        Mes {{ item.month }}
+                                        <span v-if="item.month === termMonths" class="ml-2 text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-xs select-none">PAGO BULLET</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-600">
+                                        <span v-if="item.nuevoDispuesto > 0" class="text-emerald-600 font-medium">{{ formatEUR(item.nuevoDispuesto) }}</span>
+                                        <span v-else>-</span>
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-900 font-semibold">{{ formatEUR(item.dispuesto) }}</td>
+                                    <td class="py-3 px-4 text-right text-amber-600 font-medium">+{{ formatEUR(item.interesMensual) }}</td>
+                                </tr>
+                                
+                                <tr v-if="certifications < termMonths" class="bg-slate-50/50">
+                                    <td colspan="4" class="py-4 px-4 text-center text-slate-400 font-medium text-xs tracking-wider">
+                                        · · · CONTINÚAN PAGOS DE INTERÉS HASTA MES {{ termMonths }} · · ·
+                                    </td>
+                                </tr>
+                                
+                                <tr v-if="certifications < termMonths && timeline[termMonths - 1]" class="bg-emerald-50/50 border-t-2 border-emerald-100">
+                                    <td class="py-4 px-4 font-bold text-emerald-900">Liquidación Mes {{ termMonths }}</td>
+                                    <td class="py-4 px-4">PAGO CAPITAL: {{ formatEUR(capital) }}</td>
+                                    <td class="py-4 px-4 font-medium text-emerald-800">Costes Acum.: {{ formatEUR(summaries.totalCostes) }}</td>
+                                    <td class="py-4 px-4 text-right">
+                                        <span class="font-black text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 shadow-sm">
+                                            TOTAL: {{ formatEUR(summaries.totalADevolver) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="py-4 text-center text-sm text-slate-400 mt-auto">
+                    © {{ new Date().getFullYear() }} Soluciones Financieras Siglo XXI. Realizado por Alberto de Tena. JDET Consulting Corp.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    capital: 3250000,
+                    termMonths: 24,
+                    interestRate: 12.95,
+                    openingCommPct: 3.00,
+                    feesPct: 4.50,
+                    certifications: 6,
+                    firstCert: 1291666,
+                    
+                    areaChart: null,
+                    pieChart: null
+                }
+            },
+            computed: {
+                calculatedData() {
+                    let safeFirstCert = Math.min(this.firstCert, this.capital);
+                    let safeCerts = Math.min(this.certifications, this.termMonths);
+                    let remainingCapital = this.capital - safeFirstCert;
+                    let certDrawdown = safeCerts > 1 ? remainingCapital / (safeCerts - 1) : 0;
+                    let monthlyRate = (this.interestRate / 100) / 12;
+
+                    let timeline = [];
+                    let accumulatedCapital = 0;
+                    let accumulatedInterest = 0;
+
+                    for (let m = 1; m <= this.termMonths; m++) {
+                        let drawnThisMonth = 0;
+                        if (m === 1) drawnThisMonth = safeFirstCert;
+                        else if (m <= safeCerts) drawnThisMonth = certDrawdown;
+
+                        accumulatedCapital += drawnThisMonth;
+                        if (accumulatedCapital > this.capital) accumulatedCapital = this.capital;
+
+                        let monthlyInterest = accumulatedCapital * monthlyRate;
+                        accumulatedInterest += monthlyInterest;
+
+                        timeline.push({
+                            month: m,
+                            dispuesto: accumulatedCapital,
+                            nuevoDispuesto: drawnThisMonth,
+                            interesMensual: monthlyInterest,
+                            interesAcumulado: accumulatedInterest
+                        });
+                    }
+
+                    let openingCommissionValue = this.capital * (this.openingCommPct / 100);
+                    let feesValue = this.capital * (this.feesPct / 100);
+                    let totalCostes = accumulatedInterest + openingCommissionValue + feesValue;
+                    let totalADevolver = this.capital + totalCostes;
+
+                    return {
+                        timeline,
+                        summaries: {
+                            totalInterest: accumulatedInterest,
+                            openingCommission: openingCommissionValue,
+                            fees: feesValue,
+                            totalCostes,
+                            totalADevolver
+                        }
+                    };
+                },
+                timeline() { return this.calculatedData.timeline; },
+                summaries() { return this.calculatedData.summaries; },
+                pieData() {
+                    return [
+                        { name: 'Capital Principal', value: this.capital, color: '#10b981' }, // emerald
+                        { name: 'Intereses Totales', value: this.summaries.totalInterest, color: '#f59e0b' },
+                        { name: 'Com. Apertura', value: this.summaries.openingCommission, color: '#3b82f6' },
+                        { name: 'Honorarios', value: this.summaries.fees, color: '#6366f1' },
+                    ]
+                }
+            },
+            methods: {
+                formatEUR(num) {
+                    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
+                },
+                updateCharts() {
+                    if(this.areaChart) this.areaChart.destroy();
+                    if(this.pieChart) this.pieChart.destroy();
+
+                    // Area Chart Setup
+                    const areaCtx = document.getElementById('areaChart').getContext('2d');
+                    this.areaChart = new Chart(areaCtx, {
+                        type: 'line',
+                        data: {
+                            labels: this.timeline.map(t => 'M' + t.month),
+                            datasets: [
+                                {
+                                    label: 'Capital Dispuesto',
+                                    data: this.timeline.map(t => t.dispuesto),
+                                    borderColor: '#10b981', // emerald
+                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                },
+                                {
+                                    label: 'Intereses Acumulados',
+                                    data: this.timeline.map(t => t.interesAcumulado),
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => context.dataset.label + ': ' + this.formatEUR(context.raw)
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: {
+                                    grid: { borderDash: [3, 3] },
+                                    ticks: { callback: (value) => (value / 1000000).toFixed(1) + 'M' }
+                                }
+                            }
+                        }
+                    });
+
+                    // Pie Chart Setup
+                    const pieCtx = document.getElementById('pieChart').getContext('2d');
+                    this.pieChart = new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: this.pieData.map(d => d.name),
+                            datasets: [{
+                                data: this.pieData.map(d => d.value),
+                                backgroundColor: this.pieData.map(d => d.color),
+                                borderWidth: 0,
+                                cutout: '75%'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => context.label + ': ' + this.formatEUR(context.raw)
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            },
+            mounted() {
+                this.updateCharts();
+            },
+            watch: {
+                calculatedData: {
+                    handler() { this.updateCharts(); },
+                    deep: true
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
