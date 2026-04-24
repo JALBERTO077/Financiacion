@@ -7,8 +7,9 @@ import {
 import { 
   Building2, CalendarDays, Percent, HandCoins, 
   Briefcase, Landmark, ChevronRight, Settings2, BarChart3, PieChart as PieChartIcon,
-  Activity, TrendingUp, Wallet
+  Activity, TrendingUp, Wallet, Table, ShieldAlert, ArrowRightLeft, Printer
 } from 'lucide-react';
+import { ComposedChart, Bar, Line } from 'recharts';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -81,9 +82,11 @@ export default function App() {
         month: m,
         label: `Mes ${m}`,
         dispuesto: accumulatedCapital,
+        capitalRestante: capital - accumulatedCapital,
         nuevoDispuesto: drawnThisMonth,
         interesMensual: monthlyInterest,
-        interesAcumulado: accumulatedInterest
+        interesAcumulado: accumulatedInterest,
+        deudaViva: accumulatedCapital + accumulatedInterest
       });
     }
 
@@ -120,14 +123,14 @@ export default function App() {
   ];
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden print:h-auto print:overflow-visible print:bg-white">
       
       {/* Sidebar Controls */}
       <motion.aside 
         initial={{ x: -300, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="w-[360px] flex-shrink-0 bg-slate-900 text-slate-100 flex flex-col h-full shadow-2xl relative z-20 overflow-y-auto overflow-x-hidden"
+        className="w-[360px] flex-shrink-0 bg-slate-900 text-slate-100 flex flex-col h-full shadow-2xl relative z-20 overflow-y-auto overflow-x-hidden print:hidden"
       >
         <div className="p-6 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10 w-full">
           <div className="flex items-center gap-3 text-amber-500 mb-2">
@@ -233,9 +236,9 @@ export default function App() {
       </motion.aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col items-center">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col items-center print:overflow-visible print:h-auto print:block">
         
-        <div className="w-full max-w-6xl mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="w-full max-w-6xl mx-auto px-8 py-8 flex flex-col gap-6 print:px-0 print:py-0 print:gap-4 print:max-w-full">
           {/* Header Section */}
           <motion.header 
             initial={{ y: -50, opacity: 0 }}
@@ -248,12 +251,16 @@ export default function App() {
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mt-1">
                 PROYECTO LA SELVA Nº13
               </h1>
-              <p className="text-slate-400 text-sm mt-2">
-                Solicitante: <span className="text-white font-medium uppercase">Kronung Overseas SL</span>
-              </p>
+              <div className="text-slate-400 text-sm mt-2 flex flex-wrap items-center gap-4">
+                <span>Solicitante: <span className="text-white font-medium uppercase">Kronung Overseas SL</span></span>
+                <span className="hidden md:inline text-slate-600">|</span>
+                <button onClick={() => window.print()} className="flex items-center justify-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors font-medium print:hidden border border-indigo-500/30 px-3 py-1.5 rounded-md hover:bg-slate-800">
+                  <Printer className="w-4 h-4" /> Exportar PDF a Inversores
+                </button>
+              </div>
             </div>
             
-            <div className="text-left md:text-right border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8 mt-4 md:mt-0">
+            <div className="text-left md:text-right border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8 mt-4 md:mt-0 flex flex-col justify-end">
               <div className="text-xl font-bold italic text-slate-100">Soluciones Financieras Siglo XXI</div>
               <div className="text-emerald-400 text-sm mt-1">Ángel Crespo García</div>
             </div>
@@ -451,80 +458,173 @@ export default function App() {
             </div>
           </motion.div>
 
-          {/* Certifications Table preview */}
+          {/* Advanced Analytics Row */}
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
-            className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden w-full flex flex-col"
+            className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full flex flex-col lg:flex-row gap-8 print:break-inside-avoid print:shadow-none print:border-slate-300"
           >
-            <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Calendario de Desembolsos ({certifications} Certificaciones)</span>
-              <span className="text-xs text-slate-500 italic">Previsión Acumulada</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs uppercase text-slate-500 font-bold tracking-wider">Flujos de Caja y Exposición (LTV Acumulado)</h3>
+                <ShieldAlert className="w-5 h-5 text-slate-300" />
+              </div>
+              <p className="text-[10px] text-slate-400 mb-6 uppercase">Relación entre Desembolsos y Crecimiento de la Deuda</p>
+              
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="month" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 10 }} 
+                      tickFormatter={(val) => `M${val}`} 
+                    />
+                    <YAxis 
+                      yAxisId="left" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar 
+                      yAxisId="left" 
+                      dataKey="nuevoDispuesto" 
+                      name="Flujo Saliente (Capital)" 
+                      fill="#10b981" 
+                      radius={[4, 4, 0, 0]} 
+                      maxBarSize={40}
+                    />
+                    <Line 
+                      yAxisId="right" 
+                      type="monotone" 
+                      dataKey="deudaViva" 
+                      name="Deuda Total Acumulada" 
+                      stroke="#6366f1" 
+                      strokeWidth={3} 
+                      dot={false}
+                      activeDot={{ r: 6 }} 
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="overflow-x-auto p-0">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-600">
+            
+            <div className="lg:w-80 flex flex-col gap-4 justify-center border-t lg:border-t-0 lg:border-l border-slate-100 pt-6 lg:pt-0 lg:pl-6">
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                <div className="flex items-center gap-2 text-indigo-600 mb-2">
+                  <ArrowRightLeft className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Break-Even de Exposición</span>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  El riesgo máximo se alcanza en el mes <span className="font-bold text-slate-900">{termMonths}</span> con una exposición de <span className="font-bold text-slate-900">{formatEUR(summaries.totalADevolver)}</span> justo antes del Bullet.
+                </p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                <div className="flex items-center gap-2 text-amber-600 mb-2">
+                  <Activity className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Velocidad de Interés</span>
+                </div>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  A partir del mes <span className="font-bold">{certifications}</span> (última certificación), la deuda viva crece a un ritmo de <span className="font-bold">{formatEUR(capital * ((interestRate/100)/12))} / mes</span> debido a la disposición total.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Full Amortization Table */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden w-full flex flex-col print:shadow-none print:border-slate-300 print:break-inside-avoid"
+          >
+            <div className="bg-slate-100 px-5 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between md:items-center gap-2">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <Table className="w-4 h-4 text-emerald-600" />
+                  Cuadro de Amortización Completo
+                </span>
+                <span className="text-xs text-slate-500 mt-0.5">Vista detallada mes a mes del préstamo bullet</span>
+              </div>
+            </div>
+            {/* Make table scrollable */}
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] print:max-h-none p-0 relative">
+              <table className="w-full text-left text-sm whitespace-nowrap min-w-[800px]">
+                <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-slate-600 outline outline-1 outline-slate-200">
                   <tr>
-                    <th className="py-3 px-4 rounded-tl-lg">Periodo</th>
-                    <th className="py-3 px-4">Desembolso en el Mes</th>
-                    <th className="py-3 px-4">Capital Dispuesto Total</th>
-                    <th className="py-3 px-4 text-right rounded-tr-lg">Interés Generado</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase">Periodo</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase">Flujo (Desembolso)</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase">Capital Restante</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase">Capital Vivo</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase text-right">Interés del Mes</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase text-right">Interés Acum.</th>
+                    <th className="py-3 px-5 font-semibold text-xs tracking-wider uppercase text-right">Deuda Viva Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {timeline.slice(0, Math.max(certifications, 3)).map((item) => (
-                    <tr key={item.month} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3 px-4 font-medium text-slate-800">
+                  {timeline.map((item) => (
+                    <tr key={item.month} className="hover:bg-indigo-50/30 transition-colors group">
+                      <td className="py-3 px-5 font-medium text-slate-800 flex items-center gap-2">
+                        <span className="w-6 text-slate-400 font-mono text-xs">{item.month}</span>
                         Mes {item.month}
-                        {item.month === termMonths ? <span className="ml-2 text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-xs select-none">PAGO BULLET</span> : null}
+                        {item.month === termMonths ? <span className="ml-2 text-white font-bold bg-indigo-500 px-2.5 py-0.5 rounded text-[10px] select-none print:text-indigo-600 print:bg-transparent">BULLET</span> : null}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {item.nuevoDispuesto > 0 ? (
-                          <span className="flex items-center gap-1.5"><ChevronRight className="w-3 h-3 text-emerald-500" /> {formatEUR(item.nuevoDispuesto)}</span>
-                        ) : '-'}
+                      <td className="py-3 px-5 text-emerald-600 font-medium">
+                        {item.nuevoDispuesto > 0 ? `+${formatEUR(item.nuevoDispuesto)}` : '-'}
                       </td>
-                      <td className="py-3 px-4 text-slate-900 font-semibold">{formatEUR(item.dispuesto)}</td>
-                      <td className="py-3 px-4 text-right text-amber-600 font-medium">
-                        +{formatEUR(item.interesMensual)}
+                      <td className="py-3 px-5 text-slate-500 text-xs">
+                        {formatEUR(item.capitalRestante)}
+                      </td>
+                      <td className="py-3 px-5 text-slate-900 font-medium">{formatEUR(item.dispuesto)}</td>
+                      <td className="py-3 px-5 text-right text-amber-600">
+                        {formatEUR(item.interesMensual)}
+                      </td>
+                      <td className="py-3 px-5 text-right text-slate-600">
+                        {formatEUR(item.interesAcumulado)}
+                      </td>
+                      <td className="py-3 px-5 text-right font-semibold text-indigo-900 group-hover:text-indigo-600">
+                        {formatEUR(item.deudaViva)}
                       </td>
                     </tr>
                   ))}
-                  {certifications < termMonths && (
-                    <tr className="bg-slate-50/50">
-                      <td colSpan={4} className="py-4 px-4 text-center text-slate-400 font-medium text-xs tracking-wider">
-                        · · · CONTINÚAN PAGOS DE INTERÉS HASTA MES {termMonths} · · ·
-                      </td>
-                    </tr>
-                  )}
-                  {/* Final Bullet Payment Row Display */}
-                  {certifications < termMonths && timeline[termMonths - 1] && (
-                    <tr className="bg-indigo-50/50 border-t-2 border-indigo-100">
-                      <td className="py-4 px-4 font-bold text-indigo-900 flex items-center gap-2">
-                        Liquidación Mes {termMonths} 
-                      </td>
-                      <td className="py-4 px-4">
-                        PAGO CAPITAL: {formatEUR(capital)}
-                      </td>
-                      <td className="py-4 px-4 font-medium text-indigo-800">
-                        Costes Acum.: {formatEUR(summaries.totalCostes)}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <span className="font-black text-indigo-700 bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm">
-                          TOTAL: {formatEUR(summaries.totalADevolver)}
-                        </span>
-                      </td>
-                    </tr>
-                  )}
+                  {/* Summary / Totals Row */}
+                  <tr className="bg-slate-900 text-white border-t-2 border-slate-700 font-semibold sticky bottom-0">
+                    <td className="py-4 px-5 font-bold uppercase tracking-wider text-xs" colSpan={2}>
+                      Liquidación Final
+                    </td>
+                    <td className="py-4 px-5 text-slate-400 text-xs">-</td>
+                    <td className="py-4 px-5">
+                      {formatEUR(capital)}
+                    </td>
+                    <td className="py-4 px-5 text-right text-slate-400 text-xs" colSpan={2}>
+                      Comisión: {formatEUR(summaries.openingCommission)} | Honorarios: {formatEUR(summaries.fees)}
+                    </td>
+                    <td className="py-4 px-5 text-right font-black text-emerald-400 text-base">
+                      {formatEUR(summaries.totalADevolver)}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </motion.div>
           
-        <div className="py-4 text-center text-sm text-slate-400 mt-auto">
-            © {new Date().getFullYear()} Soluciones Financieras Siglo XXI. Realizado por Alberto de Tena. JDET Consulting Corp.
+          <div className="py-6 pt-10 text-center text-sm text-slate-400 border-t border-slate-200 mt-8 w-full print:mt-12">
+            <p className="font-medium text-slate-500 mb-1">© {new Date().getFullYear()} Soluciones Financieras Siglo XXI. Realizado por Ángel Crespo.</p>
+            <p className="text-xs">JDET Consulting Corp - Documento generado automáticamente para presentación a inversores</p>
           </div>
-
         </div>
       </main>
     </div>
